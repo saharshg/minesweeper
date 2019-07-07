@@ -1,84 +1,125 @@
-import React from "react";
+import React, { useState } from "react";
 
 const transform = array => {
   let newInput = [];
-  while (array.length > 0) newInput.push(array.splice(0, 4));
+  const n = Math.sqrt(array.length);
+  while (array.length > 0) newInput.push(array.splice(0, n));
   return newInput;
 };
 
+const initialInput = (mineLevel, value) => {
+  let temp = [];
+  for (let i = 0; i < mineLevel; i += 1) {
+    temp.push(value);
+  }
+  return temp;
+};
+
 function App() {
-  const [output, setOutput] = React.useState([]);
-  const [input, setInput] = React.useState([
-    [0, 1, 0, 0],
-    [0, 0, 1, 0],
-    [0, 1, 0, 1],
-    [1, 1, 0, 0]
-  ]);
+  const [output, setOutput] = useState([]);
+  const [input, setInput] = useState([]);
+
+  const initialize = mineLevel => {
+    if (mineLevel < 100) {
+      setInput(initialInput(mineLevel, initialInput(mineLevel, 0)));
+    }
+  };
 
   const toggle = (value, index, idx) => {
-    let newInput = [...input];
-    newInput[index][idx] = value === "0" ? 1 : 0;
+    let newInput = [];
+    for (let i = 0, len = input.length; i < len; i++) {
+      newInput[i] = input[i].slice();
+    }
+    newInput[index][idx] = 0 + (value === "0");
     setInput(newInput);
   };
 
   const getOutput = () => {
-    let tOutput = [];
-    const tInput = input.flat();
-    tInput.forEach((item, i) => {
-      if (item === 1) {
-        tOutput[i] = 9;
+    let flatOutput = [];
+    const flatInput = input.flat();
+    const n = Math.sqrt(flatInput.length);
+    const upperBound = index => index < flatInput.length;
+    const lowerBound = index => index > -1;
+    flatInput.forEach((item, i) => {
+      let count = 0;
+      if (item) {
+        flatOutput[i] = 9;
       } else {
-        let count = [];
-        if (i % 4 === 0) {
-          if (i + 1 < tInput.length) {
-            count.push(tInput[i + 1]);
+        switch (i % n) {
+          case 0: {
+            const right = i + 1;
+            const top = i - n;
+            const bottom = i + n;
+            if (upperBound(right)) {
+              count += flatInput[right];
+            }
+
+            if (lowerBound(top)) {
+              count += flatInput[top] + flatInput[top + 1];
+            }
+            if (upperBound(bottom)) {
+              count += flatInput[bottom] + flatInput[bottom + 1];
+            }
+            break;
           }
 
-          if (i - 4 > -1) {
-            count.push(...tInput.slice(i - 4).slice(0, 2));
+          case n - 1: {
+            const left = i - 1;
+            const top = i - (n + 1);
+            const bottom = i + (n - 1);
+            if (lowerBound(left)) {
+              count += flatInput[left];
+            }
+
+            if (lowerBound(top)) {
+              count +=
+                flatInput[top] + flatInput[top + 1];
+            }
+            if (upperBound(bottom)) {
+              count += flatInput[bottom] + flatInput[bottom + 1];
+            }
+            break;
           }
-          if (i + 4 < tInput.length) {
-            count.push(...tInput.slice(i + 4).slice(0, 2));
+
+          default: {
+            const left = i - 1;
+            const right = i + 1;
+            const top = i - (n + 1);
+            const bottom = i + (n - 1);
+            if (lowerBound(left)) {
+              count += flatInput[left];
+            }
+
+            if (upperBound(right)) {
+              count += flatInput[right];
+            }
+
+            if (lowerBound(top)) {
+              count += flatInput[top] + flatInput[top + 1] + flatInput[top + 2];
+            }
+            if (upperBound(bottom)) {
+              count +=
+                flatInput[bottom] +
+                flatInput[bottom + 1] +
+                flatInput[bottom + 2];
+            }
           }
         }
-
-        if (i % 4 === 1 || i % 4 === 2) {
-          if (i - 1 > -1) {
-            count.push(tInput[i - 1]);
-          }
-          if (i + 1 < tInput.length) {
-            count.push(tInput[i + 1]);
-          }
-
-          if (i - 5 > -1) {
-            count.push(...tInput.slice(i - 5).slice(0, 3));
-          }
-          if (i + 3 < tInput.length) {
-            count.push(...tInput.slice(i + 3).slice(0, 3));
-          }
-        }
-
-        if (i % 4 === 3) {
-          if (i - 1 > -1) {
-            count.push(tInput[i - 1]);
-          }
-
-          if (i - 5 > -1) {
-            count.push(...tInput.slice(i - 5).slice(0, 2));
-          }
-          if (i + 3 < tInput.length) {
-            count.push(...tInput.slice(i + 3).slice(0, 2));
-          }
-        }
-        tOutput[i] = count.filter(it => it === 1).length;
+        flatOutput[i] = count;
       }
     });
-    setOutput(tOutput);
+    setOutput(flatOutput);
   };
 
   return (
     <div className="App">
-      Add mines:
+      <div>
+        <label>
+          <strong>Enter mine level:</strong>
+        </label>{" "}
+        <input onChange={e => initialize(e.target.value)} />
+      </div>
+      {input.length > 0 && <strong>Add mines:</strong>}
       <table>
         <tbody>
           {input.map((item, index) => (
@@ -86,8 +127,8 @@ function App() {
               {item.map((data, idx) => (
                 <td key={idx}>
                   <button
-                    onClick={e => toggle(e.target.value, index, idx)}
                     value={data}
+                    onClick={e => toggle(e.target.value, index, idx)}
                   >
                     {data}
                   </button>
@@ -98,7 +139,7 @@ function App() {
         </tbody>
       </table>
       <br />
-      <button onClick={getOutput}>Get output</button>
+      {input.length > 0 && <button onClick={getOutput}>Get output</button>}
       <br />
       <br />
       <table>
